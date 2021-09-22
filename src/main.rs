@@ -1,5 +1,3 @@
-mod lib;
-
 fn main() {
-    println!("{:?}", jset::intersect(vec![]));
+    println!("{:?}", jset::fold_intersect(vec![]));
 }
