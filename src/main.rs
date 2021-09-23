@@ -1,3 +1,3 @@
 fn main() {
-    println!("{:?}", jset::fold_intersect(vec![]));
+    // println!("{:?}", jset::intersect(]));
 }
