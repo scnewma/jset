@@ -2,8 +2,14 @@
 name = "jset"
 version = "0.1.0"
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+authors = ["Shaun Newman <newman350z@gmail.com>"]
+license = "MIT OR Apache-2.0"
+description = "a command-line tool for performing set operations on a list of json files"
+readme = "README.md"
+homepage = "https://github.com/scnewma/jset"
+repository = "https://github.com/scnewma/jset"
+keywords = ["cli", "json", "set"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 clap = "2.33.3"
