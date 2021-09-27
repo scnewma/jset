@@ -1,7 +1,7 @@
 use serde_json::map::Map;
 use serde_json::Value;
 
-fn intersect(a: &Value, b: &Value) -> Option<Value> {
+pub fn intersect(a: &Value, b: &Value) -> Option<Value> {
     match (a, b) {
         (&Value::Object(ref a), &Value::Object(ref b)) => {
             let mut m = Map::new();
@@ -11,11 +11,12 @@ fn intersect(a: &Value, b: &Value) -> Option<Value> {
                 }
                 let bv = b.get(k).unwrap();
                 if let Some(v) = intersect(v, bv) {
-                    m.insert(k.to_string(), v);
+                    m.insert(k.to_owned(), v);
                 }
             }
             Some(Value::Object(m))
         }
+        // TODO: O(n^2) b/c serde_json::Value does not support Hash
         (&Value::Array(ref a), &Value::Array(ref b)) => {
             let mut v = a.clone();
             v.retain(|x| b.contains(x));
@@ -31,7 +32,7 @@ fn intersect(a: &Value, b: &Value) -> Option<Value> {
     }
 }
 
-fn union(a: &Value, b: &Value) -> Option<Value> {
+pub fn union(a: &Value, b: &Value) -> Option<Value> {
     match (a, b) {
         (&Value::Object(ref a), &Value::Object(ref b)) => {
             let mut m = a.clone();
@@ -45,7 +46,7 @@ fn union(a: &Value, b: &Value) -> Option<Value> {
                         v = uv.clone();
                     }
                 }
-                m.insert(k.to_string(), v);
+                m.insert(k.to_owned(), v);
             }
             Some(Value::Object(m))
         }
@@ -66,6 +67,38 @@ fn union(a: &Value, b: &Value) -> Option<Value> {
                 Some(a.clone())
             } else {
                 None
+            }
+        }
+    }
+}
+
+// returns all the fields that only exist in a (all fields in b are subtracted from a)
+pub fn difference(a: &Value, b: &Value) -> Option<Value> {
+    match (a, b) {
+        (&Value::Object(ref a), &Value::Object(ref b)) => {
+            let mut m = Map::new();
+            for (k, v) in a {
+                if !b.contains_key(k) {
+                    m.insert(k.to_owned(), v.clone());
+                    continue;
+                }
+                let bv = b.get(k).unwrap();
+                if let Some(v) = difference(v, bv) {
+                    m.insert(k.to_owned(), v);
+                }
+            }
+            Some(Value::Object(m))
+        }
+        (&Value::Array(ref a), &Value::Array(ref b)) => {
+            let mut v = a.clone();
+            v.retain(|x| !b.contains(x));
+            Some(Value::Array(v))
+        }
+        (a, b) => {
+            if a == b {
+                None
+            } else {
+                Some(a.clone())
             }
         }
     }
@@ -281,5 +314,97 @@ mod tests {
         let v = json!(1);
         let v2 = json!("a");
         assert_eq!(None, union(&v, &v2));
+    }
+
+    #[test]
+    fn difference_empty_objects() {
+        let a = json!({});
+        let b = json!({});
+        assert_eq!(Some(json!({})), difference(&a, &b));
+    }
+
+    #[test]
+    fn difference_objects() {
+        let a = json!({"a": "b", "c": "d"});
+        let b = json!({});
+        assert_eq!(Some(json!({"a": "b", "c": "d"})), difference(&a, &b));
+
+        let a = json!({"a": "b", "c": "d"});
+        let b = json!({"c": "d"});
+        assert_eq!(Some(json!({"a": "b"})), difference(&a, &b));
+    }
+
+    #[test]
+    fn difference_objects_nested() {
+        let a = json!({"a": {"b": "c", "e": "f"}});
+        let b = json!({"a": {"b": "c"}});
+        assert_eq!(Some(json!({"a": {"e": "f"}})), difference(&a, &b));
+    }
+
+    #[test]
+    fn difference_empty_arrays() {
+        let a = json!([]);
+        let b = json!([]);
+        assert_eq!(Some(json!([])), difference(&a, &b));
+    }
+
+    #[test]
+    fn difference_arrays() {
+        let a = json!(["a", "b", "c"]);
+        let b = json!([]);
+        assert_eq!(Some(json!(["a", "b", "c"])), difference(&a, &b));
+
+        let a = json!(["a", "b", "c"]);
+        let b = json!(["b", "d"]);
+        assert_eq!(Some(json!(["a", "c"])), difference(&a, &b));
+    }
+
+    #[test]
+    fn difference_same_string() {
+        let a = json!("abc");
+        let b = json!("abc");
+        assert_eq!(None, difference(&a, &b));
+    }
+
+    #[test]
+    fn difference_string() {
+        let a = json!("abc");
+        let b = json!("cde");
+        assert_eq!(Some(json!("abc")), difference(&a, &b));
+    }
+
+    #[test]
+    fn difference_same_bool() {
+        let a = json!(true);
+        let b = json!(true);
+        assert_eq!(None, difference(&a, &b));
+    }
+
+    #[test]
+    fn difference_bool() {
+        let a = json!(true);
+        let b = json!(false);
+        assert_eq!(Some(json!(true)), difference(&a, &b));
+    }
+
+    #[test]
+    fn difference_same_num() {
+        let a = json!(1);
+        let b = json!(1);
+        assert_eq!(None, difference(&a, &b));
+    }
+
+    #[test]
+    fn difference_num() {
+        let a = json!(1);
+        let b = json!(10);
+        assert_eq!(Some(json!(1)), difference(&a, &b));
+    }
+
+    #[test]
+    fn difference_null() {
+        let a = json!(null);
+        let b = json!(null);
+        assert_eq!(None, difference(&a, &b));
     }
 }
