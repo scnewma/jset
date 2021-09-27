@@ -3,7 +3,11 @@ jset is a command-line tool for performing set operations on a list of json file
 
 ## Installation
 
-TODO
+Currently you will need a [Rust development environment setup](https://www.rust-lang.org/tools/install) to install `jset`.
+
+```
+cargo install jset
+```
 
 ## Whirlwind Tour
 
